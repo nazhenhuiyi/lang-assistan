@@ -1,7 +1,8 @@
 /* eslint-disable camelcase */
-import * as utils from "../common/utils"
+
+import { getSettings } from "~utils/getSettings"
+
 import { fetchSSE } from "../utils/fetchSSE"
-import * as lang from "./lang"
 
 export type TranslateMode =
   | "translate"
@@ -56,12 +57,7 @@ export const isAWord = (lang: string, text: string) => {
 const chineseLangs = ["zh-Hans", "zh-Hant", "wyw", "yue"]
 
 export async function translate(query: TranslateQuery) {
-  const settings = {
-    apiKey: "",
-    apiURL: "https://api.openai.com",
-    apiURLPath: "/v1/chat/completions",
-    apiModel: "gpt-3.5-turbo"
-  }
+  const settings = await getSettings()
   let systemPrompt = `请给出英语单词原始形态（如果有）、单词的语种、对应的音标（如果有）、所有含义（含词性）、双语示例，至少三条例句，请严格按照下面格式给到翻译结果：
   <原始文本>
   [<语种>] · / <单词音标>

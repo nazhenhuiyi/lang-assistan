@@ -12,6 +12,7 @@
   "dependencies": {
     "@plasmohq/messaging": "^0.1.8",
     "@plasmohq/storage": "^1.5.0",
+    "@tailwindcss/typography": "^0.5.9",
     "baseui": "^12.2.0",
     "baseui-sd": "^12.2.4",
     "daisyui": "^2.51.5",

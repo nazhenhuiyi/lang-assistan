@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { LocalDB, type VocabularyItem } from "~/common/db"
 
 import "./index.css"
 
 import { isUndefined } from "lodash-es"
+
+import { getSettings } from "~utils/getSettings"
 
 interface PlayGroundProps {
   words: string[]
@@ -16,12 +18,7 @@ const AnswerMap = {
   D: 3
 }
 export async function translate(query) {
-  const settings = {
-    apiKey: "",
-    apiURL: "https://api.openai.com",
-    apiURLPath: "/v1/chat/completions",
-    apiModel: "gpt-3.5-turbo"
-  }
+  const settings = await getSettings()
   let systemPrompt = `你现在扮演一名非常优秀的英语助教，根据我给出的单词列表，请你设计为每个单词设计一道单项选择题，并给出对应的正确答案，请严格按照以下格式：
     [<序号><题目>]
     <大写字母序号>.<选项>
@@ -66,12 +63,31 @@ export async function translate(query) {
       return res.choices[0].message
     })
 }
+interface SingleSelectExamQuestion {
+  type: "singleSelect"
+  title: string
+  options: string[]
+  answer: string
+}
+interface TypeExamQuestion {
+  type: "type"
+  description: string
+  originWord: string
+}
+
+interface TranslateExamQuestion {
+  type: "translate"
+  sentence: string
+}
+type ExamQuestion =
+  | SingleSelectExamQuestion
+  | TypeExamQuestion
+  | TranslateExamQuestion
+
 export const PlayGround: React.FC<PlayGroundProps> = ({ words }) => {
   const [localWords, setLocalWords] = useState(words)
   const [mode, setMode] = useState<"selectWord" | "quiz">("selectWord")
-  const [quiz, setQuiz] = useState<
-    { title: string; options: string[]; answer: string }[]
-  >([])
+  const [quiz, setQuiz] = useState<ExamQuestion[]>([])
   const [answers, setAnswers] = useState({})
   const generateExam = async () => {
     const controller = new AbortController()
@@ -203,12 +219,8 @@ export const PlayGround: React.FC<PlayGroundProps> = ({ words }) => {
   }
 }
 
-const delay = async (time: number) => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      resolve("")
-    }, time)
-  })
+const getAllNeedReviewWord = (words: VocabularyItem[]) => {
+  return words.filter((v) => v.nextReview < Date.now())
 }
 function DeltaFlyerPage() {
   const [words, setWords] = useState<VocabularyItem[]>([])
@@ -224,7 +236,9 @@ function DeltaFlyerPage() {
     }
     loadWords()
   }, [])
-
+  const needReviewWords = useMemo(() => {
+    return getAllNeedReviewWord(words)
+  }, [words])
   return (
     <div
       style={{
@@ -232,24 +246,50 @@ function DeltaFlyerPage() {
         minHeight: "100vh"
       }}>
       {tabs === "home" ? (
-        <div className="grid grid-cols-3 gap-4">
-          {words.map((word) => (
-            <div className="card w-96 bg-base-100 shadow-xl">
-              <div className="card-body">
-                <h2 className="card-title">{word.word}</h2>
-                {word.description.split("\n").map((v) => (
-                  <p>{v}</p>
-                ))}
+        <div className="pb-30">
+          <h2 className="flex text-xl font-medium">
+            待复习 <button className="btn ml-auto">去复习</button>
+          </h2>
+          <div className="grid grid-cols-3 gap-4">
+            {needReviewWords.map((word) => (
+              <div className="card w-96 bg-base-100 shadow-xl">
+                <div className="card-body">
+                  <h2 className="card-title">{word.word}</h2>
+                  {word.description.split("\n").map((v) => (
+                    <p>{v}</p>
+                  ))}
+                </div>
               </div>
+            ))}
+          </div>
+          <div className="divider"></div>
+          <h2 className="my-10 text-xl flex font-medium">
+            单词本{" "}
+            <div className="tooltip ml-auto" data-tip="敬请期待">
+              <button className="btn btn-disabled">导入单词</button>
             </div>
-          ))}
+          </h2>
+          <div className="grid grid-cols-3 gap-4">
+            {words.map((word) => (
+              <div className="card w-96 bg-base-100 shadow-xl">
+                <div className="card-body">
+                  <h2 className="card-title">{word.word}</h2>
+                  {word.description.split("\n").map((v) => (
+                    <p>{v}</p>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
       {tabs === "learn" ? (
         <PlayGround words={words.map((v) => v.word)} />
       ) : null}
       <div className="btm-nav">
-        <button className={tabs === "home" ? "active" : ""}>
+        <button
+          className={tabs === "home" ? "active" : ""}
+          onClick={() => setTabs("home")}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-5 w-5"
@@ -265,7 +305,9 @@ function DeltaFlyerPage() {
           </svg>
           <span className="btm-nav-label">Home</span>
         </button>
-        <button className={tabs === "learn" ? "active" : ""}>
+        <button
+          className={tabs === "learn" ? "active" : ""}
+          onClick={() => setTabs("learn")}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-5 w-5"
@@ -281,7 +323,9 @@ function DeltaFlyerPage() {
           </svg>
           <span className="btm-nav-label">Learn</span>
         </button>
-        <button className={tabs === "statics" ? "active" : ""}>
+        <button
+          className={tabs === "statics" ? "active" : "disabled"}
+          onClick={() => setTabs("statics")}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-5 w-5"

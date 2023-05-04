@@ -20,17 +20,18 @@ export const PopupCard: React.FC<TranslatePopupProps> = ({ mode, text }) => {
 
   const translateText = useCallback(
     async (text: string, selectedWord: string, signal: AbortSignal) => {
-      const beforeTranslate = () => {}
-      const afterTranslate = (reason: string) => {}
-      beforeTranslate()
-      // const cachedKey = `translate:${text}:${selectedWord}`
-      // const cachedValue = cache.get(cachedKey)
-      // if (cachedValue) {
-      //     afterTranslate('stop')
-      //     setTranslatedText(cachedValue as string)
-      //     return
-      // }
-      //   let isStopped = false
+      const res = await sendToBackground({
+        name: "getWord",
+        body: {
+          textValue
+        }
+      })
+      if (res.word) {
+        // no need to request openAi
+        console.log(res)
+        setTranslatedText(res.word.description)
+        return
+      }
       try {
         await translate({
           signal,
@@ -47,8 +48,6 @@ export const PopupCard: React.FC<TranslatePopupProps> = ({ mode, text }) => {
             })
           },
           onFinish: async (reason) => {
-            afterTranslate(reason)
-
             setTranslatedText((translatedText) => {
               let result = translatedText
 
@@ -73,25 +72,11 @@ export const PopupCard: React.FC<TranslatePopupProps> = ({ mode, text }) => {
               return result
             })
           },
-          onError: (error) => {
-            // setActionStr('Error')
-            // setErrorMessage(error)
-          }
+          onError: (error) => {}
         })
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
-        // if error is a AbortError then ignore this error
-        // if (error.name === 'AbortError') {
-        //     isStopped = true
-        //     return
-        // }
-        // setActionStr('Error')
-        // setErrorMessage((error as Error).toString())
       } finally {
-        // if (!isStopped) {
-        //     stopLoading()
-        //     isStopped = true
-        // }
       }
     },
     []
@@ -113,7 +98,7 @@ export const PopupCard: React.FC<TranslatePopupProps> = ({ mode, text }) => {
     return (
       <img
         src={icon}
-        className="w-6 h-6 p-1 select-none bg-white rounded-md"
+        className="w-6 h-6 p-1 select-none bg-white rounded-md cursor-pointer"
         onClick={() => setLocalMode("translateCard")}
       />
     )
@@ -123,9 +108,6 @@ export const PopupCard: React.FC<TranslatePopupProps> = ({ mode, text }) => {
       <div className="h-8 flex mx-4 items-center">
         <img src={icon} className="w-4 h-4" />
         <h3 className="ml-2">Lang Assistant</h3>
-        <div className="ml-auto">
-          <AiFillStar />
-        </div>
       </div>
       <div className="divider mt-0 h-2"></div>
       <div className="px-4">
